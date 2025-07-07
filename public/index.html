@@ -184,7 +184,20 @@
                     body: JSON.stringify({ prompt: prompt })
                 });
 
-                const data = await response.json();
+                // --- CRITICAL DEBUGGING STEP HERE ---
+                // If response.json() fails, try to read response as text to see the HTML
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    const errorText = await response.text();
+                    console.error('Failed to parse JSON response. Received text:', errorText);
+                    setStatus(`Error: Received unexpected response from server. Check console for details.`, 'error');
+                    generateBtn.disabled = false; // Re-enable button
+                    return; // Stop execution here as we can't process the response
+                }
+                // --- END DEBUGGING STEP ---
+
 
                 if (response.ok && data.success && data.imageData) {
                     generatedImage.src = data.imageData; // imageData is a Data URI
