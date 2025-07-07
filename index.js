@@ -6,6 +6,17 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// Serve static files from the 'public' directory
+// This means files like public/style.css will be accessible at /style.css
+app.use(express.static(path.join(__dirname, 'public'))); 
+
+// Explicitly serve index.html from the 'public' folder when the root URL is accessed
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+
+
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname)));
 
