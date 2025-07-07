@@ -4,7 +4,8 @@
   "description": "Custom API for Perchance.org image generation",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "postinstall": "npm install --prefix .cache puppeteer@latest"
   },
   "keywords": [],
   "author": "",
