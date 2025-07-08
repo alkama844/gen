@@ -95,12 +95,20 @@
         });
 
         if (!res.ok) {
-          const err = await res.json();
-          statusDiv.textContent = `❌ Error: ${err.error || "Unknown error"}`;
+          // If response is not JSON (like an HTML error), handle gracefully
+          let errText;
+          try {
+            const errJson = await res.json();
+            errText = errJson.error || "Unknown error";
+          } catch {
+            errText = await res.text();
+          }
+          statusDiv.textContent = `❌ Error: ${errText}`;
           return;
         }
 
         const data = await res.json();
+
         if (!data.images || data.images.length === 0) {
           statusDiv.textContent = "❌ No images returned.";
           return;
