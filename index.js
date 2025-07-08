@@ -40,7 +40,7 @@ async function generateImagesFromPrompt(prompt) {
     const page = await browser.newPage();
 
     console.log("⏳ Navigating to AI image generator site...");
-    await page.goto("https://perchance.org/ai-image-generator", {
+    await page.goto("https://perchance.org/ai-text-to-image-generator", {
       waitUntil: "domcontentloaded",
       timeout: 120000, // increased timeout to 2 minutes
     });
