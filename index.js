@@ -35,19 +35,41 @@ async function generateImagesFromPrompt(prompt) {
   try {
     const page = await browser.newPage();
 
+    // Log page console messages and errors for debugging
+    page.on("console", msg => console.log("PAGE LOG:", msg.text()));
+    page.on("pageerror", err => console.log("PAGE ERROR:", err));
+
+    // Set user agent to mimic real browser
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+    );
+
     console.log("⏳ Navigating to AI image generator site...");
     await page.goto("https://perchance.org/ai-text-to-image-generator", {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle",
       timeout: 120000,
     });
+
+    // Debug screenshot after page load
+    const loadedScreenshot = path.join(__dirname, "debug_page_loaded.png");
+    await page.screenshot({ path: loadedScreenshot, fullPage: true });
+    console.log(`📸 Screenshot taken after page load. Here is screenshoturl: ${loadedScreenshot}`);
 
     const promptSelector = 'textarea.paragraph-input[data-name="description"]';
     const generateBtnSelector = "#generateButtonEl";
     const resultImgSelector = "#resultImgEl";
 
     console.log("⌛ Waiting for prompt input and generate button...");
-    await page.waitForSelector(promptSelector, { timeout: 30000 });
-    await page.waitForSelector(generateBtnSelector, { timeout: 30000 });
+    try {
+      await page.waitForSelector(promptSelector, { timeout: 60000 });
+      await page.waitForSelector(generateBtnSelector, { timeout: 60000 });
+    } catch (error) {
+      const timeoutScreenshot = path.join(__dirname, "debug_selector_timeout.png");
+      console.log("⚠️ Selector timeout. Capturing page for inspection.");
+      await page.screenshot({ path: timeoutScreenshot, fullPage: true });
+      console.log(`⚠️ Selector timeout screenshot. Here is screenshoturl: ${timeoutScreenshot}`);
+      throw error;
+    }
 
     // Clear previous text and type new prompt
     await page.fill(promptSelector, "");
@@ -75,8 +97,7 @@ async function generateImagesFromPrompt(prompt) {
           return null;
         });
       } catch {
-        // Element not found yet
-        imageUrl = null;
+        imageUrl = null; // Element not found yet
       }
 
       if (!imageUrl) {
@@ -86,6 +107,9 @@ async function generateImagesFromPrompt(prompt) {
     }
 
     if (!imageUrl) {
+      const noImageScreenshot = path.join(__dirname, "debug_no_image.png");
+      await page.screenshot({ path: noImageScreenshot, fullPage: true });
+      console.log(`❌ No image generated after waiting. Here is screenshoturl: ${noImageScreenshot}`);
       throw new Error("No image generated after waiting.");
     }
 
