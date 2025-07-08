@@ -1,223 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Image Generator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #6a0dad; /* Dark Purple */
-            --primary-hover-color: #5a099a;
-            --secondary-color: #e0b0ff; /* Light Purple */
-            --background-color: #f0f2f5; /* Light Gray */
-            --card-background: #ffffff;
-            --text-color: #333333;
-            --light-text-color: #666666;
-            --border-color: #e0e0e0;
-            --success-color: #28a745;
-            --error-color: #dc3545;
-            --warning-color: #ffc107;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: var(--background-color);
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-            color: var(--text-color);
-        }
-
-        .container {
-            background-color: var(--card-background);
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 700px;
-            text-align: center;
-            box-sizing: border-box;
-        }
-
-        h1 {
-            color: var(--primary-color);
-            margin-bottom: 30px;
-            font-weight: 700;
-            font-size: 2.5em;
-        }
-
-        textarea {
-            width: calc(100% - 20px);
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            font-size: 1.1em;
-            resize: vertical;
-            min-height: 100px;
-            box-sizing: border-box;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        button {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 1.2em;
-            font-weight: 600;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        button:hover {
-            background-color: var(--primary-hover-color);
-            transform: translateY(-2px);
-        }
-
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-            box-shadow: none;
-            transform: none;
-        }
-
-        #status {
-            margin-top: 25px;
-            font-size: 1.1em;
-            font-weight: 600;
-            min-height: 25px; /* Ensure space even when empty */
-        }
-
-        .status-success { color: var(--success-color); }
-        .status-error { color: var(--error-color); }
-        .status-loading { color: var(--primary-color); }
-        .status-warning { color: var(--warning-color); }
-
-        #imageDisplay {
-            margin-top: 40px;
-            border: 1px solid var(--border-color);
-            padding: 15px;
-            border-radius: 10px;
-            display: inline-block;
-            max-width: 100%;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            background-color: var(--background-color); /* Light background for image container */
-        }
-
-        #generatedImage {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            display: block;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 25px;
-            }
-            h1 {
-                font-size: 2em;
-                margin-bottom: 20px;
-            }
-            textarea, button {
-                font-size: 1em;
-                padding: 12px 20px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Anime Image Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 20px;
+      text-align: center;
+      background: #f0f0f5;
+      color: #333;
+    }
+    input, button {
+      padding: 12px;
+      font-size: 1rem;
+      width: 80%;
+      max-width: 400px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #images {
+      margin-top: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+    }
+    #images img {
+      width: 180px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+      min-height: 24px;
+      color: #555;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>AI Image Generator</h1>
-        <textarea id="promptInput" placeholder="Enter your prompt here... (e.g., a futuristic city at sunset, highly detailed)"></textarea>
-        <button id="generateBtn">Generate Image</button>
-        <div id="status" class="status-loading"></div>
-        <div id="imageDisplay">
-            <img id="generatedImage" src="" alt="Generated Image" style="display: none;">
-        </div>
-    </div>
+  <h1>🎨 Anime Image Generator</h1>
 
-    <script>
-        const promptInput = document.getElementById('promptInput');
-        const generateBtn = document.getElementById('generateBtn');
-        const statusDiv = document.getElementById('status');
-        const generatedImage = document.getElementById('generatedImage');
+  <form id="genForm">
+    <input
+      type="text"
+      id="prompt"
+      name="prompt"
+      placeholder="Enter your anime prompt..."
+      required
+      autocomplete="off"
+    />
+    <button type="submit">Generate Images</button>
+  </form>
 
-        // IMPORTANT: Replace this with your actual Render service URL!
-        // Example: 'https://genpro-xd61.onrender.com/generate-image'
-        const API_ENDPOINT = 'https://genpro-xd61.onrender.com/generate-image'; 
+  <div id="status"></div>
+  <div id="images"></div>
 
-        function setStatus(message, type = 'loading') {
-            statusDiv.textContent = message;
-            statusDiv.className = 'status-' + type; // Apply CSS class for styling
-        }
+  <script>
+    const form = document.getElementById("genForm");
+    const imagesDiv = document.getElementById("images");
+    const statusDiv = document.getElementById("status");
 
-        generateBtn.addEventListener('click', async () => {
-            const prompt = promptInput.value.trim();
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-            if (!prompt) {
-                setStatus('Please enter a prompt!', 'warning');
-                return;
-            }
+      imagesDiv.innerHTML = "";
+      statusDiv.textContent = "⏳ Generating images... Please wait.";
 
-            setStatus('Generating image... This may take a while.', 'loading');
-            generateBtn.disabled = true;
-            generatedImage.style.display = 'none';
-            generatedImage.src = '';
+      const prompt = document.getElementById("prompt").value.trim();
+      if (!prompt) {
+        statusDiv.textContent = "⚠️ Please enter a prompt.";
+        return;
+      }
 
-            try {
-                const response = await fetch(API_ENDPOINT, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ prompt: prompt })
-                });
-
-                // --- CRITICAL DEBUGGING STEP HERE ---
-                // If response.json() fails, try to read response as text to see the HTML
-                let data;
-                try {
-                    data = await response.json();
-                } catch (jsonError) {
-                    const errorText = await response.text();
-                    console.error('Failed to parse JSON response. Received text:', errorText);
-                    setStatus(`Error: Received unexpected response from server. Check console for details.`, 'error');
-                    generateBtn.disabled = false; // Re-enable button
-                    return; // Stop execution here as we can't process the response
-                }
-                // --- END DEBUGGING STEP ---
-
-
-                if (response.ok && data.success && data.imageData) {
-                    generatedImage.src = data.imageData; // imageData is a Data URI
-                    generatedImage.style.display = 'block';
-                    setStatus('Image generated successfully!', 'success');
-                } else {
-                    const errorMessage = data.error || 'Failed to generate image.';
-                    setStatus(`Error: ${errorMessage}`, 'error');
-                }
-
-            } catch (error) {
-                setStatus(`An error occurred: ${error.message}`, 'error');
-                console.error('Fetch error:', error);
-            } finally {
-                generateBtn.disabled = false;
-            }
+      try {
+        const res = await fetch("/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
         });
 
-        // Initialize status message when page loads
-        setStatus('Enter a prompt and click "Generate Image".', 'loading'); // Neutral initial state
-    </script>
+        if (!res.ok) {
+          const err = await res.json();
+          statusDiv.textContent = `❌ Error: ${err.error || "Unknown error"}`;
+          return;
+        }
+
+        const data = await res.json();
+        if (!data.images || data.images.length === 0) {
+          statusDiv.textContent = "❌ No images returned.";
+          return;
+        }
+
+        statusDiv.textContent = `✅ Generated ${data.images.length} images:`;
+
+        imagesDiv.innerHTML = data.images
+          .map((url) => `<img src="${url}" alt="Generated anime image" />`)
+          .join("");
+      } catch (error) {
+        statusDiv.textContent = `❌ Request failed: ${error.message}`;
+      }
+    });
+  </script>
 </body>
 </html>
