@@ -32,17 +32,21 @@ async function generateImagesFromPrompt(prompt) {
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
-  try {
-    const page = await browser.newPage();
+  // ✅ Create context with realistic user environment
+  const context = await browser.newContext({
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+    viewport: { width: 1280, height: 800 },
+    deviceScaleFactor: 1,
+    isMobile: false,
+    hasTouch: false,
+  });
 
+  const page = await context.newPage();
+
+  try {
     // Log page console messages and errors for debugging
     page.on("console", msg => console.log("PAGE LOG:", msg.text()));
     page.on("pageerror", err => console.log("PAGE ERROR:", err));
-
-    // Set user agent to mimic real browser
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-    );
 
     console.log("⏳ Navigating to AI image generator site...");
     await page.goto("https://perchance.org/ai-text-to-image-generator", {
@@ -71,9 +75,9 @@ async function generateImagesFromPrompt(prompt) {
       throw error;
     }
 
-    // Clear previous text and type new prompt
+    // Clear previous text and type new prompt like a real user
     await page.fill(promptSelector, "");
-    await page.type(promptSelector, prompt);
+    await page.type(promptSelector, prompt, { delay: 50 }); // simulate typing with slight delay
 
     console.log(`▶ Clicking generate for prompt: "${prompt}"`);
     await page.click(generateBtnSelector);
@@ -133,7 +137,6 @@ app.post("/generate", async (req, res) => {
 
   try {
     const images = await generateImagesFromPrompt(prompt.trim());
-
     return res.json({ prompt, images });
   } catch (error) {
     console.error("🔥 Image generation error:", error);
