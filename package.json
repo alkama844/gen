@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Custom API for Perchance.org image generation using Playwright",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
     "postinstall": "playwright install"
