@@ -1,175 +1,72 @@
-const express = require('express');
-const puppeteer = require('puppeteer');
-const bodyParser = require('body-parser');
-const path = require('path');
+import express from "express";
+import cors from "cors";
+import { chromium } from "playwright";
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+app.use(cors());
+app.use(express.json());
 
-app.use(bodyParser.json());
+const PORT = process.env.PORT || 3000;
 
-// Serve static files from the 'public' directory
-// This is the correct and only static middleware needed if index.html is in public/
-app.use(express.static(path.join(__dirname, 'public'))); 
+async function generateImagesFromPrompt(prompt) {
+  const browser = await chromium.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
 
-// Explicitly serve index.html from the 'public' folder when the root URL is accessed
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+  try {
+    const page = await browser.newPage();
 
-// REMOVED THE REDUNDANT: app.use(express.static(path.join(__dirname)));
+    // Go to Perchance AI image generator
+    await page.goto("https://perchance.org/ai-image-generator", { waitUntil: "networkidle" });
 
-async function generateImageFromPerchance(prompt) {
-    let browser;
-    try {
-        // Most reliable executablePath for Render deployments
-        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable';
+    // Wait for prompt input (textarea) and generate button
+    const promptSelector = 'textarea[aria-label="Prompt"]';
+    const generateBtnSelector = "button.btn.btn-primary.submit-button";
 
-        browser = await puppeteer.launch({
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-gpu',
-                '--disable-dev-shm-usage',
-                '--window-size=1920,1080',
-                '--no-zygote',
-                '--single-process'
-            ],
-            executablePath: executablePath,
-        });
-        const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Linux; Android 13; CPH2205) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36');
+    await page.waitForSelector(promptSelector, { timeout: 30000 });
+    await page.waitForSelector(generateBtnSelector, { timeout: 30000 });
 
-        await page.goto('https://perchance.org/ai-image-generator', {
-            waitUntil: 'networkidle0',
-            timeout: 60000
-        });
+    // Fill prompt
+    await page.fill(promptSelector, prompt);
 
-        let userKey = null;
-        let imageId = null;
+    // Click generate
+    await page.click(generateBtnSelector);
 
-        page.on('response', async response => {
-            const url = response.url();
-            const requestMethod = response.request().method();
+    // Wait for images to appear — selector based on site HTML
+    await page.waitForSelector(".image-container img", { timeout: 120000 });
 
-            if (url.startsWith('https://image-generation.perchance.org/api/generate') && requestMethod === 'POST') {
-                try {
-                    const responseJson = await response.json();
-                    if (responseJson && responseJson.imageId) {
-                        imageId = responseJson.imageId;
-                    } else if (responseJson && responseJson.data && responseJson.data.imageId) {
-                        imageId = responseJson.data.imageId;
-                    }
-                } catch (e) {
-                }
-            }
-            if (url.startsWith('https://image-generation.perchance.org/api/') && url.includes('userKey=')) {
-                const urlParams = new URLSearchParams(url.split('?')[1]);
-                const foundUserKey = urlParams.get('userKey');
-                if (foundUserKey && !userKey) {
-                    userKey = foundUserKey;
-                }
-            }
-        });
+    // Extract all image URLs
+    const imageUrls = await page.$$eval(".image-container img", imgs =>
+      imgs.map(img => img.src).filter(src => src.startsWith("https"))
+    );
 
-        const promptInputSelector = 'textarea.form-control[aria-label="Prompt"]';
-        const generateButtonSelector = 'button.btn.btn-primary.submit-button';
-
-        await page.waitForSelector(promptInputSelector, { timeout: 30000 });
-        await page.waitForSelector(generateButtonSelector, { timeout: 30000 });
-
-        await page.focus(promptInputSelector);
-        await page.keyboard.down('Control');
-        await page.keyboard.press('A');
-        await page.keyboard.up('Control');
-        await page.keyboard.press('Delete');
-        await page.type(promptInputSelector, prompt);
-
-        await page.click(generateButtonSelector);
-
-        let queuePosition = -1;
-        let maxRetries = 60;
-        let retryCount = 0;
-
-        while (queuePosition !== 0 && retryCount < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            retryCount++;
-
-            if (!userKey) {
-                continue;
-            }
-
-            try {
-                const queueUrl = `https://image-generation.perchance.org/api/getUserQueuePosition?userKey=${userKey}&requestId=${Date.now() + Math.random()}&__cacheBust=${Math.random()}`;
-                const queueResponse = await page.evaluate(async (url) => {
-                    const response = await fetch(url);
-                    return response.json();
-                }, queueUrl);
-
-                if (queueResponse && typeof queueResponse.position === 'number') {
-                    queuePosition = queueResponse.position;
-                } else if (queueResponse && queueResponse.status === 'ready') {
-                    queuePosition = 0;
-                }
-                if (queuePosition === 0 && !imageId && queueResponse && queueResponse.imageId) {
-                    imageId = queueResponse.imageId;
-                }
-
-            } catch (e) {
-            }
-        }
-
-        if (queuePosition !== 0 || !imageId) {
-            throw new Error("Image generation timed out or could not retrieve image ID.");
-        }
-
-        const downloadUrl = `https://image-generation.perchance.org/api/downloadTemporaryImage?imageId=${imageId}`;
-
-        const imageBuffer = await page.evaluate(async (url) => {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const buffer = await response.arrayBuffer();
-            return Array.from(new Uint8Array(buffer));
-        }, downloadUrl);
-
-        if (!imageBuffer || imageBuffer.length === 0) {
-            throw new Error("Failed to get image data or image is empty.");
-        }
-
-        return `data:image/png;base64,${Buffer.from(imageBuffer).toString('base64')}`;
-
-    } catch (error) {
-        throw error;
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
+    if (imageUrls.length === 0) {
+      throw new Error("No images generated");
     }
+
+    return imageUrls;
+  } finally {
+    await browser.close();
+  }
 }
 
-app.post('/generate-image', async (req, res) => {
-    const { prompt } = req.body;
+app.post("/generate", async (req, res) => {
+  const prompt = req.body.prompt;
 
-    if (!prompt) {
-        return res.status(400).json({ error: 'Prompt is required.' });
-    }
+  if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
+    return res.status(400).json({ error: "Missing or invalid prompt" });
+  }
 
-    try {
-        const imageDataUri = await generateImageFromPerchance(prompt);
-
-        if (imageDataUri) {
-            res.json({ success: true, imageData: imageDataUri });
-        } else {
-            res.status(500).json({ success: false, error: 'Image generation failed: No image data returned.' });
-        }
-
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message || 'Internal server error during image generation.' });
-    }
+  try {
+    const images = await generateImagesFromPrompt(prompt.trim());
+    return res.json({ prompt, images });
+  } catch (error) {
+    console.error("Image generation error:", error);
+    return res.status(500).json({ error: "Failed to generate images", details: error.message });
+  }
 });
 
 app.listen(PORT, () => {
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
