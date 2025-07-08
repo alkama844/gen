@@ -25,6 +25,11 @@ app.get("/", (req, res) => {
 // import pLimit from 'p-limit';
 // const limit = pLimit(2); // max 2 concurrent requests
 
+// Helper delay function
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function generateImagesFromPrompt(prompt) {
   const browser = await chromium.launch({
     headless: true,
@@ -36,8 +41,8 @@ async function generateImagesFromPrompt(prompt) {
 
     console.log("⏳ Navigating to AI image generator site...");
     await page.goto("https://perchance.org/ai-image-generator", {
-      waitUntil: "networkidle",
-      timeout: 60000,
+      waitUntil: "domcontentloaded",
+      timeout: 120000, // increased timeout to 2 minutes
     });
 
     const promptSelector = 'textarea[aria-label="Prompt"]';
@@ -53,6 +58,9 @@ async function generateImagesFromPrompt(prompt) {
 
     console.log(`▶ Clicking generate for prompt: "${prompt}"`);
     await page.click(generateBtnSelector);
+
+    // Wait a short delay after clicking generate for images to start loading
+    await delay(3000);
 
     // Wait for images to appear with a generous timeout
     await page.waitForSelector(".image-container img", { timeout: 120000 });
