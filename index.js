@@ -21,10 +21,6 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Optional concurrency limit (uncomment and adapt if needed)
-// import pLimit from 'p-limit';
-// const limit = pLimit(2); // max 2 concurrent requests
-
 // Helper delay function
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -42,7 +38,7 @@ async function generateImagesFromPrompt(prompt) {
     console.log("⏳ Navigating to AI image generator site...");
     await page.goto("https://perchance.org/ai-text-to-image-generator", {
       waitUntil: "domcontentloaded",
-      timeout: 120000, // increased timeout to 2 minutes
+      timeout: 120000, // 2 minutes timeout for page load
     });
 
     const promptSelector = 'textarea[aria-label="Prompt"]';
@@ -62,17 +58,48 @@ async function generateImagesFromPrompt(prompt) {
     // Wait a short delay after clicking generate for images to start loading
     await delay(3000);
 
-    // Wait for images to appear with a generous timeout
-    await page.waitForSelector(".image-container img", { timeout: 120000 });
+    // Scroll the page up and down to trigger lazy loading or dynamic content
+    console.log("⬆️ Scrolling page to trigger image loading...");
+    await page.evaluate(() => {
+      window.scrollBy(0, window.innerHeight); // scroll down by viewport height
+    });
+    await delay(1000); // wait 1 second
+
+    await page.evaluate(() => {
+      window.scrollBy(0, -window.innerHeight); // scroll back up by viewport height
+    });
+    await delay(1000); // wait 1 second
+
+    // Keep scrolling slowly every 10 seconds up to 2 minutes or until images appear
+    const maxWaitTime = 120000; // 2 minutes
+    const scrollInterval = 10000; // 10 seconds
+    const start = Date.now();
+
+    let imagesFound = false;
+    while (!imagesFound && (Date.now() - start) < maxWaitTime) {
+      // Check if images are present
+      imagesFound = await page.$$eval(".image-container img", imgs => imgs.length > 0);
+      if (imagesFound) break;
+
+      // Scroll down and up again to trigger loading
+      await page.evaluate(() => {
+        window.scrollBy(0, window.innerHeight / 2);
+      });
+      await delay(1000);
+      await page.evaluate(() => {
+        window.scrollBy(0, -window.innerHeight / 2);
+      });
+      await delay(scrollInterval);
+    }
+
+    if (!imagesFound) {
+      throw new Error("No images generated after waiting.");
+    }
 
     // Extract image URLs (filter and dedupe)
     const imageUrls = await page.$$eval(".image-container img", imgs =>
       [...new Set(imgs.map(img => img.src).filter(src => src.startsWith("https")))]
     );
-
-    if (imageUrls.length === 0) {
-      throw new Error("No images generated after waiting.");
-    }
 
     console.log(`✅ Generated ${imageUrls.length} images.`);
     return imageUrls;
@@ -89,8 +116,6 @@ app.post("/generate", async (req, res) => {
   }
 
   try {
-    // If concurrency limiting is needed:
-    // const images = await limit(() => generateImagesFromPrompt(prompt.trim()));
     const images = await generateImagesFromPrompt(prompt.trim());
 
     return res.json({ prompt, images });
